@@ -14,7 +14,7 @@ import (
 func main() {
 	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
 	if err != nil {
-		log.Fatal("Error connecting RabbitMQ", err)
+		log.Fatal(err)
 	}
 	defer conn.Close()
 
@@ -22,12 +22,17 @@ func main() {
 
 	connChan, err := conn.Channel()
 	if err != nil {
-		log.Fatal("Error open channel")
+		log.Fatal(err)
 	}
 
-	pubsub.PublishJSON(connChan, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{
-		IsPaused: true,
-	})
+	pubsub.PublishJSON(
+		connChan,
+		routing.ExchangePerilDirect,
+		routing.PauseKey,
+		routing.PlayingState{
+			IsPaused: true,
+		},
+	)
 
 	fmt.Println("Starting Peril server...")
 
@@ -35,5 +40,5 @@ func main() {
 	signal.Notify(signalChan, os.Interrupt)
 	<-signalChan
 
-	fmt.Println("Shutting down program...")
+	fmt.Println("Shutting down Peril server...")
 }
