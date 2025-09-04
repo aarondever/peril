@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
+	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -18,8 +16,34 @@ func main() {
 	}
 	defer conn.Close()
 
-	fmt.Println("Connect to RabbitMQ successfully...")
+	log.Println("Connect to RabbitMQ successfully...")
 
+	gamelogic.PrintClientHelp()
+
+	for {
+		words := gamelogic.GetInput()
+		if len(words) <= 0 {
+			continue
+		}
+
+		switch words[0] {
+		case "pause":
+			log.Println("Sending a pause message")
+			publishMessage(conn, true)
+		case "resume":
+			log.Println("Sending a resume message")
+			publishMessage(conn, false)
+		case "quit":
+			log.Println("Exiting")
+			return
+		default:
+			log.Println("No understand amigo")
+		}
+
+	}
+}
+
+func publishMessage(conn *amqp.Connection, isPaused bool) {
 	connChan, err := conn.Channel()
 	if err != nil {
 		log.Fatal(err)
@@ -30,15 +54,7 @@ func main() {
 		routing.ExchangePerilDirect,
 		routing.PauseKey,
 		routing.PlayingState{
-			IsPaused: true,
+			IsPaused: isPaused,
 		},
 	)
-
-	fmt.Println("Starting Peril server...")
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
-
-	fmt.Println("Shutting down Peril server...")
 }
