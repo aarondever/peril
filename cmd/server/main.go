@@ -16,6 +16,14 @@ func main() {
 	}
 	defer conn.Close()
 
+	pubsub.DeclareAndBind(
+		conn,
+		routing.ExchangePerilTopic,
+		"game_logs",
+		"game_logs.*",
+		"durable",
+	)
+
 	log.Println("Connect to RabbitMQ successfully...")
 
 	gamelogic.PrintClientHelp()
