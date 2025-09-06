@@ -16,6 +16,13 @@ func main() {
 	}
 	defer conn.Close()
 
+	log.Println("Connect to RabbitMQ successfully...")
+
+	connChan, err := conn.Channel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	pubsub.DeclareAndBind(
 		conn,
 		routing.ExchangePerilTopic,
@@ -23,8 +30,6 @@ func main() {
 		"game_logs.*",
 		"durable",
 	)
-
-	log.Println("Connect to RabbitMQ successfully...")
 
 	gamelogic.PrintClientHelp()
 
@@ -37,10 +42,24 @@ func main() {
 		switch words[0] {
 		case "pause":
 			log.Println("Sending a pause message")
-			publishMessage(conn, true)
+			pubsub.PublishJSON(
+				connChan,
+				routing.ExchangePerilDirect,
+				routing.PauseKey,
+				routing.PlayingState{
+					IsPaused: true,
+				},
+			)
 		case "resume":
 			log.Println("Sending a resume message")
-			publishMessage(conn, false)
+			pubsub.PublishJSON(
+				connChan,
+				routing.ExchangePerilDirect,
+				routing.PauseKey,
+				routing.PlayingState{
+					IsPaused: false,
+				},
+			)
 		case "quit":
 			log.Println("Exiting")
 			return
@@ -49,20 +68,4 @@ func main() {
 		}
 
 	}
-}
-
-func publishMessage(conn *amqp.Connection, isPaused bool) {
-	connChan, err := conn.Channel()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	pubsub.PublishJSON(
-		connChan,
-		routing.ExchangePerilDirect,
-		routing.PauseKey,
-		routing.PlayingState{
-			IsPaused: isPaused,
-		},
-	)
 }

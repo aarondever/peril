@@ -19,6 +19,11 @@ func main() {
 
 	fmt.Println("Connect to RabbitMQ successfully...")
 
+	connChan, err := conn.Channel()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	username, err := gamelogic.ClientWelcome()
 	if err != nil {
 		log.Fatal(err)
@@ -43,6 +48,15 @@ func main() {
 		"transient",
 	)
 
+	pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilTopic,
+		fmt.Sprintf("%s.%s", "army_moves", username),
+		"army_moves.*",
+		"transient",
+		handlerMove(state),
+	)
+
 	for {
 		words := gamelogic.GetInput()
 		if len(words) <= 0 {
@@ -54,6 +68,13 @@ func main() {
 			state.CommandSpawn(words)
 		case "move":
 			state.CommandMove(words)
+			pubsub.PublishJSON(
+				connChan,
+				routing.ExchangePerilTopic,
+				fmt.Sprintf("%s.%s", "army_moves", username),
+				gamelogic.ArmyMove{},
+			)
+			log.Println("Move published...")
 		case "status":
 			state.CommandStatus()
 		case "help":
@@ -71,6 +92,12 @@ func main() {
 
 func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
 	defer fmt.Print("> ")
-
 	return gs.HandlePause
+}
+
+func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) {
+	return func(move gamelogic.ArmyMove) {
+		defer fmt.Print("> ")
+		gs.HandleMove(move)
+	}
 }
