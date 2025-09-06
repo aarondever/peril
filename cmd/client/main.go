@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -34,11 +32,30 @@ func main() {
 		"transient",
 	)
 
-	fmt.Println("Starting Peril client...")
+	state := gamelogic.NewGameState(username)
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	<-signalChan
+	for {
+		words := gamelogic.GetInput()
+		if len(words) <= 0 {
+			continue
+		}
 
-	fmt.Println("Shutting down Peril client...")
+		switch words[0] {
+		case "spawn":
+			state.CommandSpawn(words)
+		case "move":
+			state.CommandMove(words)
+		case "status":
+			state.CommandStatus()
+		case "help":
+			gamelogic.PrintClientHelp()
+		case "quit":
+			gamelogic.PrintQuit()
+			return
+		default:
+			log.Println("No understand amigo")
+		}
+
+	}
+
 }
