@@ -28,7 +28,7 @@ func main() {
 		routing.ExchangePerilTopic,
 		"game_logs",
 		"game_logs.*",
-		"durable",
+		pubsub.SimpleQueueDurable,
 	)
 
 	gamelogic.PrintClientHelp()

@@ -36,7 +36,7 @@ func main() {
 		routing.ExchangePerilDirect,
 		fmt.Sprintf("%s.%s", routing.PauseKey, username),
 		routing.PauseKey,
-		"transient",
+		pubsub.SimpleQueueTransient,
 		handlerPause(state),
 	)
 
@@ -45,7 +45,7 @@ func main() {
 		routing.ExchangePerilDirect,
 		fmt.Sprintf("%s.%s", routing.PauseKey, username),
 		routing.PauseKey,
-		"transient",
+		pubsub.SimpleQueueTransient,
 	)
 
 	pubsub.SubscribeJSON(
@@ -53,7 +53,7 @@ func main() {
 		routing.ExchangePerilTopic,
 		fmt.Sprintf("%s.%s", "army_moves", username),
 		"army_moves.*",
-		"transient",
+		pubsub.SimpleQueueTransient,
 		handlerMove(state),
 	)
 
@@ -67,12 +67,17 @@ func main() {
 		case "spawn":
 			state.CommandSpawn(words)
 		case "move":
-			state.CommandMove(words)
+			move, err := state.CommandMove(words)
+			if err != nil {
+				log.Println("error when move")
+				continue
+			}
+
 			pubsub.PublishJSON(
 				connChan,
 				routing.ExchangePerilTopic,
 				fmt.Sprintf("%s.%s", "army_moves", username),
-				gamelogic.ArmyMove{},
+				move,
 			)
 			log.Println("Move published...")
 		case "status":
@@ -95,7 +100,7 @@ func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) pubsub.Ack
 		defer fmt.Print("> ")
 
 		gs.HandlePause(state)
-		return "Ack"
+		return pubsub.Ack
 	}
 }
 
@@ -104,10 +109,14 @@ func handlerMove(gs *gamelogic.GameState) func(gamelogic.ArmyMove) pubsub.Acktyp
 		defer fmt.Print("> ")
 
 		outcome := gs.HandleMove(move)
-		if outcome == gamelogic.MoveOutComeSafe || outcome == gamelogic.MoveOutcomeMakeWar {
-			return "Ack"
-		}
 
-		return "NickDiscard"
+		switch outcome {
+		case gamelogic.MoveOutComeSafe, gamelogic.MoveOutcomeMakeWar:
+			return pubsub.Ack
+		case gamelogic.MoveOutcomeSamePlayer:
+			return pubsub.NackDiscard
+		default:
+			return pubsub.NackDiscard
+		}
 	}
 }

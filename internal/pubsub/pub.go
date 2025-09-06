@@ -7,8 +7,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
-type simpleQueueType string
-
 func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 	jsonData, err := json.Marshal(val)
 	if err != nil {
@@ -28,7 +26,7 @@ func DeclareAndBind(
 	exchange,
 	queueName,
 	key string,
-	queueType simpleQueueType, // an enum to represent "durable" or "transient"
+	queueType SimpleQueueType,
 ) (*amqp.Channel, amqp.Queue, error) {
 	var queue amqp.Queue
 
@@ -40,9 +38,9 @@ func DeclareAndBind(
 	var durable, autoDelete, exclusive bool
 
 	switch queueType {
-	case "durable":
+	case 0:
 		durable = true
-	case "transient":
+	case 1:
 		autoDelete = true
 		exclusive = true
 	}
@@ -53,7 +51,9 @@ func DeclareAndBind(
 		autoDelete,
 		exclusive,
 		false,
-		nil,
+		amqp.Table{
+			"x-dead-letter-exchange": "peril_dlx",
+		},
 	)
 	if err != nil {
 		return nil, queue, err
