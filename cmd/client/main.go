@@ -24,6 +24,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	state := gamelogic.NewGameState(username)
+
+	pubsub.SubscribeJSON(
+		conn,
+		routing.ExchangePerilDirect,
+		fmt.Sprintf("%s.%s", routing.PauseKey, username),
+		routing.PauseKey,
+		"transient",
+		handlerPause(state),
+	)
+
 	pubsub.DeclareAndBind(
 		conn,
 		routing.ExchangePerilDirect,
@@ -31,8 +42,6 @@ func main() {
 		routing.PauseKey,
 		"transient",
 	)
-
-	state := gamelogic.NewGameState(username)
 
 	for {
 		words := gamelogic.GetInput()
@@ -58,4 +67,10 @@ func main() {
 
 	}
 
+}
+
+func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) {
+	defer fmt.Print("> ")
+
+	return gs.HandlePause
 }
