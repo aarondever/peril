@@ -188,6 +188,7 @@ func publishGameLog(gl *routing.GameLog, connChan *amqp.Channel) pubsub.Acktype 
 		gl,
 	)
 	if err != nil {
+		log.Println("Error publish game log", err)
 		return pubsub.NackRequeue
 	}
 
