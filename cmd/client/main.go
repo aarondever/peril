@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
@@ -52,8 +53,8 @@ func main() {
 	pubsub.SubscribeJSON(
 		conn,
 		routing.ExchangePerilTopic,
-		fmt.Sprintf("%s.%s", "army_moves", username),
-		"army_moves.*",
+		fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
+		routing.ArmyMovesPrefix+".*",
 		pubsub.SimpleQueueTransient,
 		handleMove(state, connChan),
 	)
@@ -86,7 +87,7 @@ func main() {
 			pubsub.PublishJSON(
 				connChan,
 				routing.ExchangePerilTopic,
-				fmt.Sprintf("%s.%s", "army_moves", username),
+				fmt.Sprintf("%s.%s", routing.ArmyMovesPrefix, username),
 				move,
 			)
 			log.Println("Move published...")
@@ -98,7 +99,27 @@ func main() {
 			gamelogic.PrintQuit()
 			return
 		default:
-			log.Println("No understand amigo")
+			if len(words) < 1 {
+				log.Println("No understand amigo")
+				continue
+			}
+
+			count, err := strconv.Atoi(words[1])
+			if err != nil {
+				log.Println("Second command not integer")
+				continue
+			}
+
+			for range count {
+				logMsg := gamelogic.GetMaliciousLog()
+				gl := routing.GameLog{
+					CurrentTime: time.Now(),
+					Message:     logMsg,
+					Username:    username,
+				}
+
+				publishGameLog(&gl, connChan)
+			}
 		}
 
 	}
