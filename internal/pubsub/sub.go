@@ -100,6 +100,11 @@ func subscribe[T any](
 		return err
 	}
 
+	err = connChan.Qos(10, 0, false)
+	if err != nil {
+		return err
+	}
+
 	deliveryChan, err := connChan.Consume(queue.Name, "", false, false, false, false, nil)
 	if err != nil {
 		return err
